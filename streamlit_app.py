@@ -5,15 +5,16 @@ Author: Nadya Angelie Lislie (270231680)
 """
 
 import streamlit as st
-import joblib, re, os, json
+import re, os, json
 import pandas as pd
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import joblib
 
 st.set_page_config(
-    page_title="Sentiment Analysis — Nadya Angelie Lislie",
+    page_title="SentiAnalyze — Nadya Angelie Lislie",
     page_icon="💬",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -21,47 +22,65 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-.stApp { background: #0d1117; color: #e6edf3; }
-[data-testid="stSidebar"] { background: #161b22 !important; border-right: 1px solid #30363d; }
-[data-testid="stSidebar"] * { color: #e6edf3 !important; }
-h1, h2, h3, h4 { color: #e6edf3 !important; }
-.stTextArea textarea {
-    background: #161b22 !important;
-    border: 1px solid #30363d !important;
-    border-radius: 8px !important;
-    color: #e6edf3 !important;
-    font-size: 15px !important;
+.stApp { background: linear-gradient(160deg, #0a0a1a 0%, #0d1b2a 50%, #0a1628 100%); }
+[data-testid="stSidebar"] {
+    background: rgba(8,10,24,0.97) !important;
+    border-right: 1px solid #3b82f6;
 }
-.stButton > button {
-    background: #238636 !important;
-    color: white !important;
-    border: 1px solid #2ea043 !important;
-    border-radius: 6px !important;
-    font-weight: 600 !important;
+[data-testid="stSidebar"] * { color: #e2e8f0 !important; }
+h1, h2, h3, h4 { color: #e2e8f0 !important; }
+.card {
+    background: rgba(15,23,42,0.9);
+    border: 1px solid rgba(59,130,246,0.3);
+    border-radius: 14px;
+    padding: 22px;
+    margin: 10px 0;
 }
-.stButton > button:hover { background: #2ea043 !important; }
 .result-pos {
-    background: #0d2818; border: 1px solid #2ea043;
-    border-radius: 10px; padding: 24px; text-align: center; margin: 16px 0;
+    background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.08));
+    border: 2px solid #10b981;
+    border-radius: 16px; padding: 28px; text-align: center;
 }
 .result-neg {
-    background: #2d1017; border: 1px solid #f85149;
-    border-radius: 10px; padding: 24px; text-align: center; margin: 16px 0;
+    background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(185,28,28,0.08));
+    border: 2px solid #ef4444;
+    border-radius: 16px; padding: 28px; text-align: center;
 }
-.info-box {
-    background: #161b22; border: 1px solid #30363d;
-    border-radius: 8px; padding: 16px; margin: 8px 0;
+.stButton > button {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+    color: white !important; border: none !important;
+    border-radius: 10px !important; font-weight: 600 !important;
 }
-footer, #MainMenu, [data-testid="stToolbar"] { visibility: hidden; }
+.stButton > button:hover {
+    background: linear-gradient(135deg, #1d4ed8, #1e40af) !important;
+    box-shadow: 0 6px 20px rgba(37,99,235,0.4) !important;
+}
+.stTextArea textarea {
+    background: rgba(15,23,42,0.95) !important;
+    border: 1px solid rgba(59,130,246,0.4) !important;
+    border-radius: 10px !important; color: #e2e8f0 !important;
+}
+.author-tag {
+    position: fixed; bottom: 14px; right: 14px;
+    background: rgba(37,99,235,0.85); color: white;
+    padding: 6px 14px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; z-index: 999;
+}
+footer, #MainMenu { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Load model ─────────────────────────────────────────
+# ── Load model langsung (path relatif ke repo) ─────────
 @st.cache_resource
 def load_model():
-    model = joblib.load("model_cache/lr_model.pkl")
-    tfidf = joblib.load("model_cache/tfidf_vectorizer.pkl")
-    with open("model_cache/training_history.json") as f:
+    # Streamlit Cloud menjalankan dari root repo, cari model_cache di sana
+    base = os.path.dirname(os.path.abspath(__file__))
+    model_path = os.path.join(base, "lr_model.pkl")
+    tfidf_path = os.path.join(base, "tfidf_vectorizer.pkl")
+    hist_path  = os.path.join(base, "training_history.json")
+    model   = joblib.load(model_path)
+    tfidf   = joblib.load(tfidf_path)
+    with open(hist_path) as f:
         history = json.load(f)
     return model, tfidf, history
 
@@ -86,112 +105,165 @@ def preprocess(text):
 
 def predict_text(text, model, tfidf):
     clean = preprocess(text)
-    vec = tfidf.transform([clean])
+    vec   = tfidf.transform([clean])
     label = int(model.predict(vec)[0])
     proba = model.predict_proba(vec)[0]
     return label, float(proba[1]), float(proba[0]), clean
 
-# Load model
+# Load
 try:
     model, tfidf, history = load_model()
     model_ok = True
 except Exception as e:
-    st.error(f"Gagal load model: {e}")
     model_ok = False
+    model_err = str(e)
 
 # ── Sidebar ────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("### Sentiment Analysis")
-    st.markdown("Analisis Sentimen Teks Bahasa Indonesia")
+    st.markdown("""
+    <div style='text-align:center; padding:20px 0 8px;'>
+        <h2 style='color:#93c5fd; margin:6px 0 2px;'>SentiAnalyze</h2>
+        <p style='color:#64748b; font-size:12px; margin:0;'>Analisis Sentimen Bahasa Indonesia</p>
+        <div style='background:rgba(37,99,235,0.15); border-radius:8px; padding:8px; margin:10px 0;'>
+            <p style='color:#bfdbfe; font-size:11px; margin:0; font-weight:600;'>Nadya Angelie Lislie</p>
+            <p style='color:#64748b; font-size:11px; margin:2px 0;'>NIM: 270231680</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("---")
-    menu = st.radio("Halaman", ["Prediksi", "Batch Analysis", "Model Info"], label_visibility="collapsed")
+    menu = st.radio("Menu", [
+        "Prediksi Teks",
+        "Batch Analysis",
+        "Model Performance",
+        "Tentang"
+    ], label_visibility="collapsed")
+
     st.markdown("---")
-    st.markdown("**Nadya Angelie Lislie**")
-    st.markdown("270231680")
-    if model_ok:
-        acc = round(history.get("accuracy", 0) * 100, 2)
-        st.markdown(f"Accuracy: **{acc}%**")
+    st.markdown("""
+    <div style='background:rgba(37,99,235,0.1); border-radius:10px; padding:12px;'>
+        <p style='color:#93c5fd; font-size:12px; font-weight:700; margin:0 0 6px;'>Model Info</p>
+        <p style='color:#94a3b8; font-size:11px; margin:2px 0;'>Logistic Regression</p>
+        <p style='color:#94a3b8; font-size:11px; margin:2px 0;'>TF-IDF (5000 fitur)</p>
+        <p style='color:#94a3b8; font-size:11px; margin:2px 0;'>n-gram (1,2)</p>
+        <p style='color:#94a3b8; font-size:11px; margin:2px 0;'>4141 data</p>
+        <p style='color:#3b82f6; font-size:11px; margin:6px 0 0; font-weight:600;'>Accuracy: 99.88%</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # ── PREDIKSI ───────────────────────────────────────────
-if menu == "Prediksi":
-    st.markdown("## Prediksi Sentimen")
+if menu == "Prediksi Teks":
+    st.markdown("""
+    <div style='text-align:center; padding:28px 0 16px;'>
+        <h1 style='color:#93c5fd; font-size:2.4em; margin-bottom:6px;'>SentiAnalyze</h1>
+        <p style='color:#64748b; font-size:1em;'>Analisis Sentimen Teks Bahasa Indonesia · Logistic Regression</p>
+        <div style='display:inline-block; background:rgba(37,99,235,0.15); border-radius:20px; padding:3px 14px; margin-top:6px;'>
+            <span style='color:#93c5fd; font-size:12px;'>Accuracy 99.88% · 4141 Data</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # Simpan contoh di session state
+    if not model_ok:
+        st.error(f"Gagal load model: {model_err}")
+        st.stop()
+
     if "contoh" not in st.session_state:
         st.session_state.contoh = ""
 
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([3, 2])
+
     with col1:
-        if st.button("Contoh Positif"):
-            st.session_state.contoh = "Produk sangat bagus dan berkualitas, pelayanan ramah, pengiriman cepat sekali!"
-    with col2:
-        if st.button("Contoh Negatif"):
-            st.session_state.contoh = "Barang tidak sesuai gambar, kualitas buruk dan pengiriman sangat lama, mengecewakan!"
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown("#### Input Teks")
 
-    user_text = st.text_area(
-        "Masukkan teks ulasan:",
-        value=st.session_state.contoh,
-        height=120,
-        placeholder="Ketik teks ulasan bahasa Indonesia di sini...",
-        key="input_area"
-    )
+        ec1, ec2 = st.columns(2)
+        with ec1:
+            if st.button("Contoh Positif", use_container_width=True):
+                st.session_state.contoh = "Produk sangat bagus dan berkualitas, pelayanan ramah pengiriman cepat sekali!"
+        with ec2:
+            if st.button("Contoh Negatif", use_container_width=True):
+                st.session_state.contoh = "Barang tidak sesuai gambar, kualitas buruk dan pengiriman sangat lama mengecewakan!"
 
-    # Update session state kalau user ngetik manual
-    if user_text != st.session_state.contoh:
+        user_text = st.text_area(
+            "Teks",
+            value=st.session_state.contoh,
+            placeholder="Masukkan teks ulasan bahasa Indonesia...",
+            height=130,
+            label_visibility="collapsed",
+            key="input_area"
+        )
         st.session_state.contoh = user_text
 
-    if st.button("Analisis Sentimen", type="primary"):
+        go = st.button("Analisis Sekarang", use_container_width=True, type="primary")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with col2:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown("#### Statistik Model")
+        acc = round(history.get("accuracy", 0) * 100, 2)
+        st.metric("Accuracy", f"{acc}%")
+        st.metric("Data Train", f"{history.get('train_size', 0):,}")
+        st.metric("Data Test", f"{history.get('test_size', 0):,}")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    if go:
         teks = st.session_state.contoh.strip()
         if not teks:
-            st.warning("Masukkan teks terlebih dahulu.")
-        elif not model_ok:
-            st.error("Model tidak tersedia.")
+            st.warning("Masukkan teks terlebih dahulu!")
         else:
             label, conf_pos, conf_neg, clean = predict_text(teks, model, tfidf)
 
             if label == 1:
-                st.markdown("""
+                st.markdown(f"""
                 <div class='result-pos'>
-                    <h2 style='color:#2ea043; margin:0;'>POSITIF</h2>
-                    <p style='color:#7ee787; margin:6px 0 0;'>Sentimen ulasan ini positif</p>
+                    <h2 style='color:#10b981; margin:4px 0;'>SENTIMEN POSITIF</h2>
+                    <p style='color:#a7f3d0; font-size:1.1em;'>Confidence: <b>{conf_pos*100:.1f}%</b></p>
                 </div>""", unsafe_allow_html=True)
             else:
-                st.markdown("""
+                st.markdown(f"""
                 <div class='result-neg'>
-                    <h2 style='color:#f85149; margin:0;'>NEGATIF</h2>
-                    <p style='color:#ffa198; margin:6px 0 0;'>Sentimen ulasan ini negatif</p>
+                    <h2 style='color:#ef4444; margin:4px 0;'>SENTIMEN NEGATIF</h2>
+                    <p style='color:#fca5a5; font-size:1.1em;'>Confidence: <b>{conf_neg*100:.1f}%</b></p>
                 </div>""", unsafe_allow_html=True)
 
-            st.markdown(f"**Confidence Positif:** {conf_pos*100:.1f}%")
-            st.progress(conf_pos)
-            st.markdown(f"**Confidence Negatif:** {conf_neg*100:.1f}%")
-            st.progress(conf_neg)
+            fig, ax = plt.subplots(figsize=(7, 2))
+            fig.patch.set_facecolor('none'); ax.set_facecolor('none')
+            bars = ax.barh(['Negatif', 'Positif'], [conf_neg*100, conf_pos*100],
+                           color=['#ef4444', '#10b981'], height=0.45)
+            for b, v in zip(bars, [conf_neg*100, conf_pos*100]):
+                ax.text(min(v+1, 93), b.get_y()+b.get_height()/2,
+                        f'{v:.1f}%', va='center', color='white', fontweight='bold', fontsize=12)
+            ax.set_xlim(0, 100)
+            ax.tick_params(colors='white', labelsize=11)
+            for sp in ax.spines.values(): sp.set_visible(False)
+            plt.tight_layout()
+            st.pyplot(fig, transparent=True)
+            plt.close()
 
-            with st.expander("Detail preprocessing"):
-                st.write(f"**Original:** {teks}")
-                st.write(f"**Cleaned:** {clean}")
+            with st.expander("Detail Preprocessing"):
+                st.code(f"Original : {teks}\nCleaned  : {clean}", language="text")
 
 # ── BATCH ──────────────────────────────────────────────
 elif menu == "Batch Analysis":
-    st.markdown("## Batch Analysis")
-    st.markdown("Masukkan beberapa teks, satu per baris (maksimal 50).")
+    st.markdown("### Analisis Batch Teks")
 
-    batch_text = st.text_area(
-        "Teks:",
-        height=200,
-        placeholder="Produk bagus dan berkualitas!\nPengiriman sangat lambat\nBarang sesuai deskripsi",
-        key="batch_area"
+    if not model_ok:
+        st.error(f"Gagal load model: {model_err}")
+        st.stop()
+
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    batch_input = st.text_area(
+        "Teks (satu per baris, maks 50):",
+        height=180,
+        placeholder="Produk bagus dan berkualitas!\nPengiriman sangat lambat dan mengecewakan\nBarang sesuai deskripsi"
     )
-
-    if st.button("Analisis Semua", type="primary"):
-        if not batch_text.strip():
-            st.warning("Masukkan minimal 1 teks.")
-        elif not model_ok:
-            st.error("Model tidak tersedia.")
+    if st.button("Analisis Semua", use_container_width=True):
+        lines = [t.strip() for t in batch_input.strip().split('\n') if t.strip()]
+        if not lines:
+            st.warning("Masukkan minimal 1 teks!")
         else:
-            lines = [l.strip() for l in batch_text.strip().split('\n') if l.strip()][:50]
             rows = []
-            for t in lines:
+            for t in lines[:50]:
                 lbl, cp, cn, _ = predict_text(t, model, tfidf)
                 rows.append({
                     "Teks": t,
@@ -199,75 +271,79 @@ elif menu == "Batch Analysis":
                     "Conf. Positif (%)": round(cp * 100, 1),
                     "Conf. Negatif (%)": round(cn * 100, 1)
                 })
-
             df = pd.DataFrame(rows)
-            pos = (df["Hasil"] == "Positif").sum()
-            neg = (df["Hasil"] == "Negatif").sum()
+            pos = int((df["Hasil"] == "Positif").sum())
+            neg = int((df["Hasil"] == "Negatif").sum())
 
             c1, c2, c3 = st.columns(3)
             c1.metric("Total", len(df))
-            c2.metric("Positif", int(pos))
-            c3.metric("Negatif", int(neg))
+            c2.metric("Positif", pos)
+            c3.metric("Negatif", neg)
+            st.dataframe(df, use_container_width=True, height=280)
 
-            st.dataframe(df, use_container_width=True)
-
-            fig, ax = plt.subplots(figsize=(4, 3))
-            fig.patch.set_facecolor('#0d1117')
-            ax.set_facecolor('#0d1117')
-            ax.bar(["Positif", "Negatif"], [int(pos), int(neg)],
-                   color=["#2ea043", "#f85149"], width=0.4)
-            ax.set_title("Distribusi Sentimen", color="#e6edf3")
-            ax.tick_params(colors="#e6edf3")
-            for sp in ax.spines.values():
-                sp.set_edgecolor('#30363d')
-            plt.tight_layout()
-            st.pyplot(fig, transparent=True)
+            fig2, ax2 = plt.subplots(figsize=(4, 4))
+            fig2.patch.set_facecolor('none'); ax2.set_facecolor('none')
+            ax2.pie([pos, neg], labels=['Positif', 'Negatif'],
+                    colors=['#10b981', '#ef4444'], autopct='%1.1f%%',
+                    textprops={'color': 'white', 'fontsize': 12}, startangle=90)
+            ax2.set_title('Distribusi Sentimen', color='white', fontsize=12)
+            st.pyplot(fig2, transparent=True)
             plt.close()
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# ── MODEL INFO ─────────────────────────────────────────
-elif menu == "Model Info":
-    st.markdown("## Informasi Model")
+# ── MODEL PERFORMANCE ──────────────────────────────────
+elif menu == "Model Performance":
+    st.markdown("### Model Performance")
 
     if not model_ok:
-        st.error("Model tidak tersedia.")
-    else:
-        rep = history.get("report", {})
-        acc = round(history.get("accuracy", 0) * 100, 2)
-        train_size = history.get("train_size", "-")
-        test_size = history.get("test_size", "-")
+        st.error(f"Gagal load model: {model_err}")
+        st.stop()
 
-        st.markdown(f"""
-| Info | Detail |
-|---|---|
-| **Author** | Nadya Angelie Lislie |
-| **NIM** | 270231680 |
-| **Model** | Logistic Regression |
-| **Fitur** | TF-IDF (5000 fitur, n-gram 1-2) |
-| **Accuracy** | {acc}% |
-| **Data Train** | {train_size:,} |
-| **Data Test** | {test_size:,} |
-| **Total Dataset** | 4.141 ulasan Bahasa Indonesia |
-        """)
+    acc = round(history.get("accuracy", 0) * 100, 2)
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Accuracy", f"{acc}%")
+    c2.metric("Train Size", f"{history.get('train_size', 0):,}")
+    c3.metric("Test Size", f"{history.get('test_size', 0):,}")
 
-        if rep:
-            st.markdown("---")
-            st.markdown("**Classification Report:**")
+    rep = history.get("report", {})
+    if rep:
+        st.markdown("#### Classification Report")
+        def g(cls, m): return f"{rep.get(cls, {}).get(m, 0):.4f}"
+        st.dataframe(pd.DataFrame({
+            "Kelas":     ["Positif", "Negatif", "Macro Avg"],
+            "Precision": [g("Positif","precision"), g("Negatif","precision"), g("macro avg","precision")],
+            "Recall":    [g("Positif","recall"),    g("Negatif","recall"),    g("macro avg","recall")],
+            "F1-Score":  [g("Positif","f1-score"),  g("Negatif","f1-score"),  g("macro avg","f1-score")],
+        }), use_container_width=True, hide_index=True)
 
-            def safe(cls, metric):
-                return f"{rep.get(cls, {}).get(metric, 0):.4f}"
+    base = os.path.dirname(os.path.abspath(__file__))
+    img_path = os.path.join(base, "training_results.png")
+    if os.path.exists(img_path):
+        st.image(img_path, caption="Confusion Matrix & Metrics", use_container_width=True)
 
-            report_df = pd.DataFrame({
-                "Kelas":     ["Positif", "Negatif", "Macro Avg"],
-                "Precision": [safe("Positif","precision"), safe("Negatif","precision"), safe("macro avg","precision")],
-                "Recall":    [safe("Positif","recall"),    safe("Negatif","recall"),    safe("macro avg","recall")],
-                "F1-Score":  [safe("Positif","f1-score"),  safe("Negatif","f1-score"),  safe("macro avg","f1-score")],
-            })
-            st.dataframe(report_df, use_container_width=True, hide_index=True)
+# ── TENTANG ────────────────────────────────────────────
+elif menu == "Tentang":
+    st.markdown("### Tentang Proyek")
+    st.markdown("""
+    <div class="card">
+        <h3 style='color:#93c5fd;'>SentiAnalyze — Analisis Sentimen Bahasa Indonesia</h3>
+        <p style='color:#94a3b8; line-height:1.8;'>
+        Aplikasi analisis sentimen teks Bahasa Indonesia menggunakan model
+        <b style='color:#93c5fd;'>Logistic Regression</b> dengan fitur
+        <b style='color:#93c5fd;'>TF-IDF</b> (unigram + bigram).
+        Dilatih pada 4141 ulasan e-commerce dan restoran berbahasa Indonesia.
+        </p>
+        <hr style='border-color:#1e293b;'>
+        <table style='width:100%; color:#cbd5e1; border-collapse:collapse;'>
+            <tr style='border-bottom:1px solid #1e293b;'><td style='padding:8px 0; color:#93c5fd;'><b>Author</b></td><td>Nadya Angelie Lislie</td></tr>
+            <tr style='border-bottom:1px solid #1e293b;'><td style='padding:8px 0; color:#93c5fd;'><b>NIM</b></td><td>270231680</td></tr>
+            <tr style='border-bottom:1px solid #1e293b;'><td style='padding:8px 0; color:#93c5fd;'><b>Dataset</b></td><td>4141 teks Bahasa Indonesia (Positif / Negatif)</td></tr>
+            <tr style='border-bottom:1px solid #1e293b;'><td style='padding:8px 0; color:#93c5fd;'><b>Accuracy</b></td><td>99.88%</td></tr>
+            <tr style='border-bottom:1px solid #1e293b;'><td style='padding:8px 0; color:#93c5fd;'><b>Model</b></td><td>Logistic Regression (C=1.0, solver=lbfgs)</td></tr>
+            <tr style='border-bottom:1px solid #1e293b;'><td style='padding:8px 0; color:#93c5fd;'><b>Fitur</b></td><td>TF-IDF max_features=5000, ngram_range=(1,2)</td></tr>
+            <tr><td style='padding:8px 0; color:#93c5fd;'><b>Stack</b></td><td>Streamlit + scikit-learn</td></tr>
+        </table>
+    </div>
+    """, unsafe_allow_html=True)
 
-        st.markdown("---")
-        if os.path.exists("static/training_results.png"):
-            st.image("static/training_results.png",
-                     caption="Confusion Matrix & Metrics",
-                     use_container_width=True)
-        else:
-            st.info("File training_results.png tidak ditemukan di folder static/.")
+st.markdown('<div class="author-tag">Nadya Angelie Lislie · 270231680</div>', unsafe_allow_html=True)
