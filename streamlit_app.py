@@ -72,6 +72,12 @@ h1, h2, h3, h4 { color: #e2e8f0 !important; }
     font-size: 11px; font-weight: 600; z-index: 999;
 }
 footer, #MainMenu { visibility: hidden; }
+
+/* metric label & value warna terang */
+[data-testid="stMetricLabel"] { color: #94a3b8 !important; }
+[data-testid="stMetricValue"] { color: #e2e8f0 !important; }
+[data-testid="metric-container"] { color: #e2e8f0 !important; }
+p, label, span { color: #e2e8f0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -185,21 +191,21 @@ if menu == "Prediksi Teks":
         with ec1:
             if st.button("Contoh Positif", use_container_width=True):
                 st.session_state.contoh = "Produk sangat bagus dan berkualitas, pelayanan ramah pengiriman cepat sekali!"
-                st.rerun()
         with ec2:
             if st.button("Contoh Negatif", use_container_width=True):
                 st.session_state.contoh = "Barang tidak sesuai gambar, kualitas buruk dan pengiriman sangat lama mengecewakan!"
-                st.rerun()
 
+        # Tidak pakai key agar value dari session_state bisa update textarea
         user_text = st.text_area(
             "Teks",
             value=st.session_state.contoh,
             placeholder="Masukkan teks ulasan bahasa Indonesia...",
             height=130,
-            label_visibility="collapsed",
-            key="input_area"
+            label_visibility="collapsed"
         )
-        st.session_state.contoh = user_text
+        # Simpan yang user ketik manual
+        if user_text != st.session_state.contoh:
+            st.session_state.contoh = user_text
 
         go = st.button("Analisis Sekarang", use_container_width=True, type="primary")
         st.markdown('</div>', unsafe_allow_html=True)
@@ -214,7 +220,7 @@ if menu == "Prediksi Teks":
         st.markdown('</div>', unsafe_allow_html=True)
 
     if go:
-        teks = st.session_state.contoh.strip()
+        teks = user_text.strip()
         if not teks:
             st.warning("Masukkan teks terlebih dahulu!")
         else:
