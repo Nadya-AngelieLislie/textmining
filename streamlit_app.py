@@ -56,9 +56,14 @@ h1, h2, h3, h4 { color: #e2e8f0 !important; }
     box-shadow: 0 6px 20px rgba(37,99,235,0.4) !important;
 }
 .stTextArea textarea {
+    color: #e2e8f0 !important;
     background: rgba(15,23,42,0.95) !important;
     border: 1px solid rgba(59,130,246,0.4) !important;
-    border-radius: 10px !important; color: #e2e8f0 !important;
+    border-radius: 10px !important;
+}
+.stTextArea textarea::placeholder {
+    color: #64748b !important;
+    opacity: 1 !important;
 }
 .author-tag {
     position: fixed; bottom: 14px; right: 14px;
@@ -180,9 +185,11 @@ if menu == "Prediksi Teks":
         with ec1:
             if st.button("Contoh Positif", use_container_width=True):
                 st.session_state.contoh = "Produk sangat bagus dan berkualitas, pelayanan ramah pengiriman cepat sekali!"
+                st.rerun()
         with ec2:
             if st.button("Contoh Negatif", use_container_width=True):
                 st.session_state.contoh = "Barang tidak sesuai gambar, kualitas buruk dan pengiriman sangat lama mengecewakan!"
+                st.rerun()
 
         user_text = st.text_area(
             "Teks",
